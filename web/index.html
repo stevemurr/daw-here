@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Audition · Sessions</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-2: #1c2330;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --accent-2: #79c0ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Text', system-ui, sans-serif;
+    font-size: 14px;
+  }
+  header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  header h1 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 0.02em; }
+  header .root { color: var(--muted); font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; }
+  header .count { margin-left: auto; color: var(--muted); font-size: 12px; }
+  .filter {
+    padding: 16px 24px 0;
+  }
+  .filter input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 120ms;
+  }
+  .filter input:focus { border-color: var(--accent); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px;
+    padding: 16px 24px 32px;
+  }
+  a.session {
+    display: block;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    text-decoration: none;
+    transition: background 120ms, border-color 120ms, transform 120ms;
+  }
+  a.session:hover {
+    background: var(--surface-2);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+  a.session .name {
+    font-weight: 500;
+    word-break: break-word;
+  }
+  a.session .meta {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  .empty {
+    padding: 80px 24px;
+    text-align: center;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Audition</h1>
+    <span class="root" id="root-path"></span>
+    <span class="count" id="count"></span>
+  </header>
+  <div class="filter">
+    <input id="filter" type="search" placeholder="Filter sessions…" autofocus>
+  </div>
+  <div class="grid" id="grid"></div>
+<script>
+const $grid = document.getElementById('grid');
+const $count = document.getElementById('count');
+const $filter = document.getElementById('filter');
+let allSessions = [];
+
+function render(filterText) {
+  const ft = (filterText || '').toLowerCase().trim();
+  const matches = ft
+    ? allSessions.filter(s => s.name.toLowerCase().includes(ft))
+    : allSessions;
+  $grid.innerHTML = '';
+  if (matches.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = ft ? 'No sessions match your filter.' : 'No sessions found yet — still unzipping?';
+    $grid.appendChild(empty);
+  } else {
+    for (const s of matches) {
+      const a = document.createElement('a');
+      a.className = 'session';
+      a.href = '/session/' + encodeURIComponent(s.name);
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = s.name;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = s.track_count + (s.track_count === 1 ? ' track' : ' tracks');
+      a.append(name, meta);
+      $grid.appendChild(a);
+    }
+  }
+  $count.textContent = `${matches.length} of ${allSessions.length}`;
+}
+
+async function load() {
+  const resp = await fetch('/api/sessions');
+  allSessions = await resp.json();
+  render('');
+}
+
+$filter.addEventListener('input', e => render(e.target.value));
+load();
+</script>
+</body>
+</html>
