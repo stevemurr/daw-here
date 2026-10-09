@@ -1,0 +1,439 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>daw-here: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">daw-here/main.go (70.2%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// Package main is a single-binary, browser-based DAW-style audition server
+// for a folder of multitrack sessions.
+//
+// Each immediate subdirectory of --root is treated as a session; every audio
+// file inside becomes a track. The browser loads all tracks for a session
+// and plays them back in sample-accurate sync with per-track volume, pan,
+// mute/solo, EQ, compressor, delay and reverb.
+package main
+
+import (
+        "embed"
+        "encoding/json"
+        "flag"
+        "fmt"
+        "html"
+        "io/fs"
+        "log"
+        "net/http"
+        "net/url"
+        "os"
+        "path/filepath"
+        "sort"
+        "strings"
+        "time"
+)
+
+//go:embed web/*
+var webFS embed.FS
+
+// audioExts maps file extension (lower-case, with dot) to MIME type. We carry
+// our own table because Go's mime package doesn't reliably know .flac/.opus.
+var audioExts = map[string]string{
+        ".wav":  "audio/wav",
+        ".flac": "audio/flac",
+        ".mp3":  "audio/mpeg",
+        ".ogg":  "audio/ogg",
+        ".oga":  "audio/ogg",
+        ".opus": "audio/opus",
+        ".aif":  "audio/aiff",
+        ".aiff": "audio/aiff",
+        ".m4a":  "audio/mp4",
+        ".aac":  "audio/aac",
+}
+
+type Track struct {
+        Name string `json:"name"`
+        URL  string `json:"url"`
+        Size int64  `json:"size"`
+}
+
+type SessionMeta struct {
+        Name       string `json:"name"`
+        TrackCount int    `json:"track_count"`
+}
+
+type server struct {
+        root        string
+        indexHTML   []byte
+        sessionTmpl string
+}
+
+func main() <span class="cov0" title="0">{
+        root := flag.String("root", ".", "directory containing session subdirectories")
+        port := flag.Int("port", 8765, "TCP port to listen on")
+        host := flag.String("host", "127.0.0.1", "host to bind to (use 0.0.0.0 to expose on the LAN)")
+        flag.Parse()
+
+        absRoot, err := filepath.Abs(*root)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("invalid --root: %v", err)
+        }</span>
+        <span class="cov0" title="0">info, err := os.Stat(absRoot)
+        if err != nil || !info.IsDir() </span><span class="cov0" title="0">{
+                log.Fatalf("--root not a directory: %s", absRoot)
+        }</span>
+
+        <span class="cov0" title="0">indexBytes, err := fs.ReadFile(webFS, "web/index.html")
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("loading index.html: %v", err)
+        }</span>
+        <span class="cov0" title="0">sessionBytes, err := fs.ReadFile(webFS, "web/session.html")
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("loading session.html: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">srv := &amp;server{
+                root:        absRoot,
+                indexHTML:   indexBytes,
+                sessionTmpl: string(sessionBytes),
+        }
+
+        mux := http.NewServeMux()
+        mux.HandleFunc("GET /{$}", srv.serveIndex)
+        mux.HandleFunc("GET /api/sessions", srv.serveSessionsAPI)
+        mux.HandleFunc("GET /session/{name}", srv.serveSessionHTML)
+        mux.HandleFunc("GET /api/session/{name}", srv.serveSessionAPI)
+        mux.HandleFunc("GET /audio/{session}/{path...}", srv.serveAudio)
+
+        addr := fmt.Sprintf("%s:%d", *host, *port)
+        httpSrv := &amp;http.Server{
+                Addr:              addr,
+                Handler:           mux,
+                ReadHeaderTimeout: 5 * time.Second,
+        }
+
+        displayHost := *host
+        if displayHost == "0.0.0.0" </span><span class="cov0" title="0">{
+                if h, err := os.Hostname(); err == nil </span><span class="cov0" title="0">{
+                        displayHost = h
+                }</span>
+        }
+        <span class="cov0" title="0">log.Printf("daw-here listening on http://%s:%d", displayHost, *port)
+        log.Printf("serving sessions from: %s", absRoot)
+        if err := httpSrv.ListenAndServe(); err != nil </span><span class="cov0" title="0">{
+                log.Fatal(err)
+        }</span>
+}
+
+// ---- handlers ----
+
+func (s *server) serveIndex(w http.ResponseWriter, r *http.Request) <span class="cov2" title="2">{
+        w.Header().Set("Content-Type", "text/html; charset=utf-8")
+        w.Header().Set("Cache-Control", "no-store")
+        w.Write(s.indexHTML)
+}</span>
+
+func (s *server) serveSessionsAPI(w http.ResponseWriter, r *http.Request) <span class="cov2" title="2">{
+        writeJSON(w, s.listSessions())
+}</span>
+
+func (s *server) serveSessionHTML(w http.ResponseWriter, r *http.Request) <span class="cov4" title="5">{
+        name := r.PathValue("name")
+        if _, ok := s.resolveSession(name); !ok </span><span class="cov1" title="1">{
+                http.NotFound(w, r)
+                return
+        }</span>
+        <span class="cov3" title="4">body := strings.ReplaceAll(s.sessionTmpl, "__SESSION_NAME__", html.EscapeString(name))
+        w.Header().Set("Content-Type", "text/html; charset=utf-8")
+        w.Header().Set("Cache-Control", "no-store")
+        w.Write([]byte(body))</span>
+}
+
+func (s *server) serveSessionAPI(w http.ResponseWriter, r *http.Request) <span class="cov2" title="2">{
+        name := r.PathValue("name")
+        dir, ok := s.resolveSession(name)
+        if !ok </span><span class="cov0" title="0">{
+                http.NotFound(w, r)
+                return
+        }</span>
+        <span class="cov2" title="2">writeJSON(w, map[string]any{
+                "name":   name,
+                "tracks": s.listTracks(dir),
+        })</span>
+}
+
+func (s *server) serveAudio(w http.ResponseWriter, r *http.Request) <span class="cov4" title="6">{
+        sessionName := r.PathValue("session")
+        relPath := r.PathValue("path")
+
+        sessionDir, ok := s.resolveSession(sessionName)
+        if !ok </span><span class="cov1" title="1">{
+                http.NotFound(w, r)
+                return
+        }</span>
+
+        <span class="cov4" title="5">target := filepath.Clean(filepath.Join(sessionDir, relPath))
+        rel, err := filepath.Rel(sessionDir, target)
+        if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) </span><span class="cov0" title="0">{
+                http.Error(w, "forbidden", http.StatusForbidden)
+                return
+        }</span>
+
+        <span class="cov4" title="5">info, err := os.Stat(target)
+        if err != nil || info.IsDir() </span><span class="cov1" title="1">{
+                http.NotFound(w, r)
+                return
+        }</span>
+
+        <span class="cov3" title="4">if ct, ok := audioExts[strings.ToLower(filepath.Ext(target))]; ok </span><span class="cov3" title="3">{
+                w.Header().Set("Content-Type", ct)
+        }</span>
+
+        <span class="cov3" title="4">file, err := os.Open(target)
+        if err != nil </span><span class="cov0" title="0">{
+                http.Error(w, "io error", http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov3" title="4">defer file.Close()
+
+        // ServeContent handles Range, conditional GETs, and Content-Length.
+        http.ServeContent(w, r, info.Name(), info.ModTime(), file)</span>
+}
+
+// ---- session listing ----
+
+func (s *server) listSessions() []SessionMeta <span class="cov5" title="7">{
+        entries, err := os.ReadDir(s.root)
+        if err != nil </span><span class="cov0" title="0">{
+                return []SessionMeta{}
+        }</span>
+        <span class="cov5" title="7">out := make([]SessionMeta, 0, len(entries))
+        for _, e := range entries </span><span class="cov6" title="12">{
+                if !e.IsDir() </span><span class="cov1" title="1">{
+                        continue</span>
+                }
+                <span class="cov6" title="11">dir := filepath.Join(s.root, e.Name())
+                tracks := s.listTracks(dir)
+                if len(tracks) == 0 </span><span class="cov2" title="2">{
+                        continue</span>
+                }
+                <span class="cov5" title="9">out = append(out, SessionMeta{
+                        Name:       e.Name(),
+                        TrackCount: len(tracks),
+                })</span>
+        }
+        <span class="cov5" title="7">sort.Slice(out, func(i, j int) bool </span><span class="cov4" title="5">{
+                return strings.ToLower(out[i].Name) &lt; strings.ToLower(out[j].Name)
+        }</span>)
+        <span class="cov5" title="7">return out</span>
+}
+
+// listTracks descends through redundant single-directory wrappers (common in
+// Cambridge MT zips) before walking the contained tree for audio files.
+func (s *server) listTracks(sessionDir string) []Track <span class="cov7" title="24">{
+        contentRoot := sessionDir
+        for i := 0; i &lt; 4; i++ </span><span class="cov8" title="33">{
+                visible, err := readVisible(contentRoot)
+                if err != nil </span><span class="cov0" title="0">{
+                        break</span>
+                }
+                <span class="cov8" title="33">if len(visible) == 1 &amp;&amp; visible[0].IsDir() </span><span class="cov6" title="11">{
+                        contentRoot = filepath.Join(contentRoot, visible[0].Name())
+                        continue</span>
+                }
+                <span class="cov7" title="22">break</span>
+        }
+
+        <span class="cov7" title="24">tracks := []Track{}
+        sessionBase := filepath.Base(sessionDir)
+        filepath.WalkDir(contentRoot, func(path string, d fs.DirEntry, err error) error </span><span class="cov9" title="58">{
+                if err != nil || d.IsDir() </span><span class="cov7" title="25">{
+                        return nil
+                }</span>
+                <span class="cov8" title="33">base := d.Name()
+                if strings.HasPrefix(base, "._") || base == ".DS_Store" </span><span class="cov1" title="1">{
+                        return nil
+                }</span>
+                <span class="cov8" title="32">if _, ok := audioExts[strings.ToLower(filepath.Ext(base))]; !ok </span><span class="cov3" title="3">{
+                        return nil
+                }</span>
+                <span class="cov8" title="29">info, err := d.Info()
+                if err != nil </span><span class="cov0" title="0">{
+                        return nil
+                }</span>
+                <span class="cov8" title="29">display, _ := filepath.Rel(contentRoot, path)
+                display = filepath.ToSlash(display)
+                urlRel, _ := filepath.Rel(sessionDir, path)
+                urlRel = filepath.ToSlash(urlRel)
+                tracks = append(tracks, Track{
+                        Name: display,
+                        URL:  "/audio/" + url.PathEscape(sessionBase) + "/" + escapePathSegments(urlRel),
+                        Size: info.Size(),
+                })
+                return nil</span>
+        })
+
+        <span class="cov7" title="24">sort.Slice(tracks, func(i, j int) bool </span><span class="cov5" title="10">{
+                return strings.ToLower(tracks[i].Name) &lt; strings.ToLower(tracks[j].Name)
+        }</span>)
+        <span class="cov7" title="24">return tracks</span>
+}
+
+// ---- helpers ----
+
+func (s *server) resolveSession(name string) (string, bool) <span class="cov8" title="32">{
+        if name == "" || name == "." || name == ".." || strings.ContainsAny(name, "/\\") </span><span class="cov6" title="14">{
+                return "", false
+        }</span>
+        <span class="cov7" title="18">target, err := filepath.Abs(filepath.Join(s.root, name))
+        if err != nil </span><span class="cov0" title="0">{
+                return "", false
+        }</span>
+        <span class="cov7" title="18">rootAbs, err := filepath.Abs(s.root)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", false
+        }</span>
+        <span class="cov7" title="18">if target != rootAbs &amp;&amp; !strings.HasPrefix(target, rootAbs+string(filepath.Separator)) </span><span class="cov0" title="0">{
+                return "", false
+        }</span>
+        <span class="cov7" title="18">info, err := os.Stat(target)
+        if err != nil || !info.IsDir() </span><span class="cov4" title="5">{
+                return "", false
+        }</span>
+        <span class="cov6" title="13">return target, true</span>
+}
+
+func readVisible(dir string) ([]fs.DirEntry, error) <span class="cov8" title="35">{
+        entries, err := os.ReadDir(dir)
+        if err != nil </span><span class="cov1" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="34">out := make([]fs.DirEntry, 0, len(entries))
+        for _, e := range entries </span><span class="cov9" title="45">{
+                n := e.Name()
+                if strings.HasPrefix(n, "._") || n == ".DS_Store" </span><span class="cov3" title="3">{
+                        continue</span>
+                }
+                <span class="cov9" title="42">out = append(out, e)</span>
+        }
+        <span class="cov8" title="34">return out, nil</span>
+}
+
+// escapePathSegments URL-encodes each "/"-separated segment but preserves the
+// separators themselves so the resulting path keeps its directory structure.
+func escapePathSegments(p string) string <span class="cov8" title="40">{
+        parts := strings.Split(p, "/")
+        for i, part := range parts </span><span class="cov10" title="67">{
+                parts[i] = url.PathEscape(part)
+        }</span>
+        <span class="cov8" title="40">return strings.Join(parts, "/")</span>
+}
+
+func writeJSON(w http.ResponseWriter, obj any) <span class="cov4" title="6">{
+        w.Header().Set("Content-Type", "application/json")
+        w.Header().Set("Cache-Control", "no-store")
+        json.NewEncoder(w).Encode(obj)
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

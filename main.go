@@ -59,6 +59,37 @@ type server struct {
 	sessionTmpl string
 }
 
+// serveStatic returns an http.HandlerFunc that serves a single embedded file.
+// The path is relative to the embedded web filesystem (e.g., "web/mixer.js").
+func (s *server) serveStatic(embeddedPath string) http.HandlerFunc {
+	content, err := fs.ReadFile(webFS, embeddedPath)
+	if err != nil {
+		log.Printf("static: failed to read %s: %v", embeddedPath, err)
+		return func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", s.mimeTypeFor(embeddedPath))
+		w.Header().Set("Cache-Control", "no-store")
+		w.Write(content)
+	}
+}
+
+// mimeTypeFor returns the appropriate Content-Type for an embedded static file.
+func (*server) mimeTypeFor(path string) string {
+	switch filepath.Ext(path) {
+	case ".js":
+		return "application/javascript; charset=utf-8"
+	case ".css":
+		return "text/css; charset=utf-8"
+	case ".html":
+		return "text/html; charset=utf-8"
+	default:
+		return "application/octet-stream"
+	}
+}
+
 func main() {
 	root := flag.String("root", ".", "directory containing session subdirectories")
 	port := flag.Int("port", 8765, "TCP port to listen on")
@@ -92,6 +123,14 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", srv.serveIndex)
 	mux.HandleFunc("GET /api/sessions", srv.serveSessionsAPI)
+
+	// Static assets — must be registered BEFORE catch-all routes below.
+	mux.HandleFunc("GET /mixer.js", srv.serveStatic("web/mixer.js"))
+	mux.HandleFunc("GET /components/config.js", srv.serveStatic("web/components/config.js"))
+	mux.HandleFunc("GET /components/fx-strip.js", srv.serveStatic("web/components/fx-strip.js"))
+	mux.HandleFunc("GET /components/track.js", srv.serveStatic("web/components/track.js"))
+	mux.HandleFunc("GET /components/player.js", srv.serveStatic("web/components/player.js"))
+
 	mux.HandleFunc("GET /session/{name}", srv.serveSessionHTML)
 	mux.HandleFunc("GET /api/session/{name}", srv.serveSessionAPI)
 	mux.HandleFunc("GET /audio/{session}/{path...}", srv.serveAudio)

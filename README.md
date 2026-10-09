@@ -19,6 +19,18 @@ Each immediate subdirectory of `--root` is treated as a session; every audio fil
 
 Click **FX** in any track header to drop its channel strip below the row.
 
+## Client-side Architecture
+
+The browser interface is built entirely with **Web Components** using shadow DOM for style encapsulation:
+
+- `<daw-player>` — Root component: transport controls, seekbar, master volume, track container.
+- `<daw-track>` — Per-track element: mute/solo/FX buttons, pan/volume sliders, waveform lane.
+- `<daw-fx-strip>` — Per-track FX panel (Input, EQ, Comp, Delay, Reverb): knob sliders, reverb type pills.
+- `mixer.js` — Pure Web Audio API engine (no DOM dependencies): manages audio graphs, playback state, and cross-component events.
+- `config.js` — Shared design tokens (color palette) imported by all components.
+
+All styling uses CSS custom properties from a single shared palette (`web/components/config.js`). Shadow DOM isolates each component's styles — no global CSS leaks between tracks or into the page root.
+
 ## Build
 
 Needs Go 1.22+ (for the `net/http` mux pattern syntax).
