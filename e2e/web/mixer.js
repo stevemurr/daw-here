@@ -5,6 +5,80 @@
 function dbToGain(db) { return Math.pow(10, db / 20); }
 function gainToDb(g)  { return 20 * Math.log10(Math.max(g, 1e-6)); }
 
+// ---- FX chain builder ----
+// Builds a complete channel-strip FX graph for one track.
+// Returns { fx, gain, panner } where fx contains all AudioNodes for param manipulation.
+function buildFxChain(ctx, irs) {
+  // --- FX nodes ---
+  const inGain = ctx.createGain(); inGain.gain.value = 1;
+  const eqLow = ctx.createBiquadFilter();
+  eqLow.type = 'lowshelf'; eqLow.frequency.value = 120; eqLow.gain.value = 0;
+  const eqMid = ctx.createBiquadFilter();
+  eqMid.type = 'peaking'; eqMid.frequency.value = 1000; eqMid.Q.value = 1; eqMid.gain.value = 0;
+  const eqHigh = ctx.createBiquadFilter();
+  eqHigh.type = 'highshelf'; eqHigh.frequency.value = 6000; eqHigh.gain.value = 0;
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -24; comp.knee.value = 6; comp.ratio.value = 1;
+  comp.attack.value = 0.01; comp.release.value = 0.1;
+  const compMakeup = ctx.createGain(); compMakeup.gain.value = 1;
+  const fxBus = ctx.createGain();
+  const dryGain = ctx.createGain(); dryGain.gain.value = 1;
+  const delaySend = ctx.createGain(); delaySend.gain.value = 0;
+  const delayNode = ctx.createDelay(2.0); delayNode.delayTime.value = 0.25;
+  const delayFeedback = ctx.createGain(); delayFeedback.gain.value = 0.3;
+  const reverbSend = ctx.createGain(); reverbSend.gain.value = 0;
+  const reverb = ctx.createConvolver(); reverb.buffer = irs.room;
+  const outGain = ctx.createGain(); outGain.gain.value = 1;
+
+  // --- Track-level fader + pan ---
+  const gain = ctx.createGain(); gain.gain.value = 1;
+  const panner = ctx.createStereoPanner(); panner.pan.value = 0;
+
+  // --- Wire the graph ---
+  inGain.connect(eqLow);
+  eqLow.connect(eqMid);
+  eqMid.connect(eqHigh);
+  eqHigh.connect(comp);
+  comp.connect(compMakeup);
+  compMakeup.connect(fxBus);
+  fxBus.connect(dryGain); dryGain.connect(outGain);
+  fxBus.connect(delaySend); delaySend.connect(delayNode);
+  delayNode.connect(delayFeedback); delayFeedback.connect(delayNode);
+  delayNode.connect(outGain);
+  fxBus.connect(reverbSend); reverbSend.connect(reverb);
+  reverb.connect(outGain);
+  outGain.connect(gain);
+  gain.connect(panner);
+  // NOTE: panner output is connected externally by addTrack()
+
+  return {
+    fx: { inGain, eqLow, eqMid, eqHigh, comp, compMakeup, fxBus, dryGain,
+          delaySend, delayNode, delayFeedback, reverbSend, reverb, outGain },
+    gain, panner,
+  };
+}
+
+// ---- FX param dispatch table (module-level constant, not recreated per call) ----
+const FX_SETTERS = {
+  inGainDb:       (t, v, ctx) => { t.fxState.inGainDb = v; t.fx.inGain.gain.setTargetAtTime(dbToGain(v), ctx.currentTime, 0.01); },
+  eqLowGain:      (t, v, ctx) => { t.fxState.eqLowGain = v; t.fx.eqLow.gain.setTargetAtTime(v, ctx.currentTime, 0.01); },
+  eqMidFreq:      (t, v, ctx) => { t.fxState.eqMidFreq = v; t.fx.eqMid.frequency.setTargetAtTime(v, ctx.currentTime, 0.02); },
+  eqMidGain:      (t, v, ctx) => { t.fxState.eqMidGain = v; t.fx.eqMid.gain.setTargetAtTime(v, ctx.currentTime, 0.01); },
+  eqMidQ:         (t, v, ctx) => { t.fxState.eqMidQ = v; t.fx.eqMid.Q.setTargetAtTime(v, ctx.currentTime, 0.02); },
+  eqHighGain:     (t, v, ctx) => { t.fxState.eqHighGain = v; t.fx.eqHigh.gain.setTargetAtTime(v, ctx.currentTime, 0.01); },
+  compThreshold:  (t, v, ctx) => { t.fxState.compThreshold = v; t.fx.comp.threshold.setTargetAtTime(v, ctx.currentTime, 0.01); },
+  compRatio:      (t, v, ctx) => { t.fxState.compRatio = v; t.fx.comp.ratio.setTargetAtTime(v, ctx.currentTime, 0.01); },
+  compAttack:     (t, v, ctx) => { t.fxState.compAttack = v; t.fx.comp.attack.setTargetAtTime(v / 1000, ctx.currentTime, 0.01); },
+  compRelease:    (t, v, ctx) => { t.fxState.compRelease = v; t.fx.comp.release.setTargetAtTime(v / 1000, ctx.currentTime, 0.01); },
+  compMakeupDb:   (t, v, ctx) => { t.fxState.compMakeupDb = v; t.fx.compMakeup.gain.setTargetAtTime(dbToGain(v), ctx.currentTime, 0.01); },
+  delayTimeMs:    (t, v, ctx) => { t.fxState.delayTimeMs = v; t.fx.delayNode.delayTime.setTargetAtTime(v / 1000, ctx.currentTime, 0.05); },
+  delayFeedback:  (t, v, ctx) => { t.fxState.delayFeedback = v; t.fx.delayFeedback.gain.setTargetAtTime(v / 100, ctx.currentTime, 0.01); },
+  delayMix:       (t, v, ctx) => { t.fxState.delayMix = v; t.fx.delaySend.gain.setTargetAtTime(v / 100, ctx.currentTime, 0.01); },
+  reverbType:     (t, v, ctx) => { t.fxState.reverbType = v; t.fx.reverb.buffer = ctx.irs[v]; },
+  reverbMix:      (t, v, ctx) => { t.fxState.reverbMix = v; t.fx.reverbSend.gain.setTargetAtTime(v / 100, ctx.currentTime, 0.01); },
+  outGainDb:      (t, v, ctx) => { t.fxState.outGainDb = v; t.fx.outGain.gain.setTargetAtTime(dbToGain(v), ctx.currentTime, 0.01); },
+};
+
 // ---- Impulse responses (procedurally generated reverb tails) ----
 function makeIR(ctx, type) {
   const sr = ctx.sampleRate;
@@ -123,47 +197,7 @@ class Mixer {
   emit(kind, payload) { for (const fn of this._listeners) fn(kind, payload); }
 
   addTrack(meta) {
-    const ctx = this.ctx;
-
-    // Channel-strip FX chain (always present; defaults are neutral).
-    const inGain = ctx.createGain(); inGain.gain.value = 1;
-    const eqLow = ctx.createBiquadFilter();
-    eqLow.type = 'lowshelf'; eqLow.frequency.value = 120; eqLow.gain.value = 0;
-    const eqMid = ctx.createBiquadFilter();
-    eqMid.type = 'peaking'; eqMid.frequency.value = 1000; eqMid.Q.value = 1; eqMid.gain.value = 0;
-    const eqHigh = ctx.createBiquadFilter();
-    eqHigh.type = 'highshelf'; eqHigh.frequency.value = 6000; eqHigh.gain.value = 0;
-    const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -24; comp.knee.value = 6; comp.ratio.value = 1;
-    comp.attack.value = 0.01; comp.release.value = 0.1;
-    const compMakeup = ctx.createGain(); compMakeup.gain.value = 1;
-    const fxBus = ctx.createGain();
-    const dryGain = ctx.createGain(); dryGain.gain.value = 1;
-    const delaySend = ctx.createGain(); delaySend.gain.value = 0;
-    const delayNode = ctx.createDelay(2.0); delayNode.delayTime.value = 0.25;
-    const delayFeedback = ctx.createGain(); delayFeedback.gain.value = 0.3;
-    const reverbSend = ctx.createGain(); reverbSend.gain.value = 0;
-    const reverb = ctx.createConvolver(); reverb.buffer = this.irs.room;
-    const outGain = ctx.createGain(); outGain.gain.value = 1;
-
-    // Track-level fader + pan (downstream of FX chain).
-    const gain = ctx.createGain(); gain.gain.value = 1;
-    const panner = ctx.createStereoPanner(); panner.pan.value = 0;
-
-    inGain.connect(eqLow);
-    eqLow.connect(eqMid);
-    eqMid.connect(eqHigh);
-    eqHigh.connect(comp);
-    comp.connect(compMakeup);
-    compMakeup.connect(fxBus);
-    fxBus.connect(dryGain); dryGain.connect(outGain);
-    fxBus.connect(delaySend); delaySend.connect(delayNode);
-    delayNode.connect(delayFeedback); delayFeedback.connect(delayNode);
-    delayNode.connect(outGain);
-    fxBus.connect(reverbSend); reverbSend.connect(reverb);
-    reverb.connect(outGain);
-    outGain.connect(gain);
-    gain.connect(panner);
+    const { fx, gain, panner } = buildFxChain(this.ctx, this.irs);
     panner.connect(this.master);
 
     const t = {
@@ -180,8 +214,7 @@ class Mixer {
       loadProgress: 0,
       loaded: false,
       error: null,
-      fx: { inGain, eqLow, eqMid, eqHigh, comp, compMakeup, fxBus, dryGain,
-            delaySend, delayNode, delayFeedback, reverbSend, reverb, outGain },
+      fx,
       // fxState stores UI-facing values. Unit convention:
       //   dB values:  inGainDb, eqLowGain, eqMidGain, eqHighGain, compThreshold, compMakeupDb, outGainDb
       //   Hz values:  eqMidFreq (200–8000 Hz)
@@ -266,123 +299,17 @@ class Mixer {
     t.panner.pan.setValueAtTime(t.panner.pan.value, now);
     t.panner.pan.linearRampToValueAtTime(p, now + 0.015);
   }
-  setInGain(idx, db) {
-    const t = this.tracks[idx];
-    t.fxState.inGainDb = db;
-    t.fx.inGain.gain.setTargetAtTime(dbToGain(db), this.ctx.currentTime, 0.01);
-  }
-  setEqLow(idx, db) {
-    const t = this.tracks[idx];
-    t.fxState.eqLowGain = db;
-    t.fx.eqLow.gain.setTargetAtTime(db, this.ctx.currentTime, 0.01);
-  }
-  setEqMidFreq(idx, hz) {
-    const t = this.tracks[idx];
-    t.fxState.eqMidFreq = hz;
-    t.fx.eqMid.frequency.setTargetAtTime(hz, this.ctx.currentTime, 0.02);
-  }
-  setEqMidGain(idx, db) {
-    const t = this.tracks[idx];
-    t.fxState.eqMidGain = db;
-    t.fx.eqMid.gain.setTargetAtTime(db, this.ctx.currentTime, 0.01);
-  }
-  setEqMidQ(idx, q) {
-    const t = this.tracks[idx];
-    t.fxState.eqMidQ = q;
-    t.fx.eqMid.Q.setTargetAtTime(q, this.ctx.currentTime, 0.02);
-  }
-  setEqHigh(idx, db) {
-    const t = this.tracks[idx];
-    t.fxState.eqHighGain = db;
-    t.fx.eqHigh.gain.setTargetAtTime(db, this.ctx.currentTime, 0.01);
-  }
-  setCompThreshold(idx, db) {
-    const t = this.tracks[idx];
-    t.fxState.compThreshold = db;
-    t.fx.comp.threshold.setTargetAtTime(db, this.ctx.currentTime, 0.01);
-  }
-  setCompRatio(idx, r) {
-    const t = this.tracks[idx];
-    t.fxState.compRatio = r;
-    t.fx.comp.ratio.setTargetAtTime(r, this.ctx.currentTime, 0.01);
-  }
-  setCompAttack(idx, ms) {
-    const t = this.tracks[idx];
-    t.fxState.compAttack = ms;
-    t.fx.comp.attack.setTargetAtTime(ms / 1000, this.ctx.currentTime, 0.01);
-  }
-  setCompRelease(idx, ms) {
-    const t = this.tracks[idx];
-    t.fxState.compRelease = ms;
-    t.fx.comp.release.setTargetAtTime(ms / 1000, this.ctx.currentTime, 0.01);
-  }
-  setCompMakeup(idx, db) {
-    const t = this.tracks[idx];
-    t.fxState.compMakeupDb = db;
-    t.fx.compMakeup.gain.setTargetAtTime(dbToGain(db), this.ctx.currentTime, 0.01);
-  }
-  setDelayTime(idx, ms) {
-    const t = this.tracks[idx];
-    t.fxState.delayTimeMs = ms;
-    t.fx.delayNode.delayTime.setTargetAtTime(ms / 1000, this.ctx.currentTime, 0.05);
-  }
-  setDelayFeedback(idx, pct) {
-    const t = this.tracks[idx];
-    t.fxState.delayFeedback = pct;
-    t.fx.delayFeedback.gain.setTargetAtTime(pct / 100, this.ctx.currentTime, 0.01);
-  }
-  setDelayMix(idx, pct) {
-    const t = this.tracks[idx];
-    t.fxState.delayMix = pct;
-    t.fx.delaySend.gain.setTargetAtTime(pct / 100, this.ctx.currentTime, 0.01);
-  }
-  setReverbType(idx, type) {
-    const t = this.tracks[idx];
-    t.fxState.reverbType = type;
-    t.fx.reverb.buffer = this.irs[type];
-  }
-  setReverbMix(idx, pct) {
-    const t = this.tracks[idx];
-    t.fxState.reverbMix = pct;
-    t.fx.reverbSend.gain.setTargetAtTime(pct / 100, this.ctx.currentTime, 0.01);
-  }
-  setOutGain(idx, db) {
-    const t = this.tracks[idx];
-    t.fxState.outGainDb = db;
-    t.fx.outGain.gain.setTargetAtTime(dbToGain(db), this.ctx.currentTime, 0.01);
-  }
 
   /**
-    * Centralized FX parameter dispatch. Maps param keys to typed setters,
-    * eliminating indirect string-based method lookup in track.js.
-    * @param {number} idx - Track index.
-    * @param {string} param - Param key matching fxState keys.
-    * @param {*} value - Parameter value.
-    */
+   * Centralized FX parameter dispatch.
+   * @param {number} idx - Track index.
+   * @param {string} param - Param key matching fxState keys.
+   * @param {*} value - Parameter value.
+   */
   setFxParam(idx, param, value) {
     const t = this.tracks[idx];
     if (!t) return;
-    // Param → setter mapping (type-safe, no string-based lookup)
-    const setters = {
-      inGainDb:       (v) => { t.fxState.inGainDb = v; t.fx.inGain.gain.setTargetAtTime(dbToGain(v), this.ctx.currentTime, 0.01); },
-      eqLowGain:      (v) => { t.fxState.eqLowGain = v; t.fx.eqLow.gain.setTargetAtTime(v, this.ctx.currentTime, 0.01); },
-      eqMidFreq:      (v) => { t.fxState.eqMidFreq = v; t.fx.eqMid.frequency.setTargetAtTime(v, this.ctx.currentTime, 0.02); },
-      eqMidGain:      (v) => { t.fxState.eqMidGain = v; t.fx.eqMid.gain.setTargetAtTime(v, this.ctx.currentTime, 0.01); },
-      eqMidQ:         (v) => { t.fxState.eqMidQ = v; t.fx.eqMid.Q.setTargetAtTime(v, this.ctx.currentTime, 0.02); },
-      eqHighGain:     (v) => { t.fxState.eqHighGain = v; t.fx.eqHigh.gain.setTargetAtTime(v, this.ctx.currentTime, 0.01); },
-      compThreshold:  (v) => { t.fxState.compThreshold = v; t.fx.comp.threshold.setTargetAtTime(v, this.ctx.currentTime, 0.01); },
-      compRatio:      (v) => { t.fxState.compRatio = v; t.fx.comp.ratio.setTargetAtTime(v, this.ctx.currentTime, 0.01); },
-      compAttack:     (v) => { t.fxState.compAttack = v; t.fx.comp.attack.setTargetAtTime(v / 1000, this.ctx.currentTime, 0.01); },
-      compRelease:    (v) => { t.fxState.compRelease = v; t.fx.comp.release.setTargetAtTime(v / 1000, this.ctx.currentTime, 0.01); },
-      compMakeupDb:   (v) => { t.fxState.compMakeupDb = v; t.fx.compMakeup.gain.setTargetAtTime(dbToGain(v), this.ctx.currentTime, 0.01); },
-      delayTimeMs:    (v) => { t.fxState.delayTimeMs = v; t.fx.delayNode.delayTime.setTargetAtTime(v / 1000, this.ctx.currentTime, 0.05); },
-      delayFeedback:  (v) => { t.fxState.delayFeedback = v; t.fx.delayFeedback.gain.setTargetAtTime(v / 100, this.ctx.currentTime, 0.01); },
-      delayMix:       (v) => { t.fxState.delayMix = v; t.fx.delaySend.gain.setTargetAtTime(v / 100, this.ctx.currentTime, 0.01); },
-      reverbType:     (v) => { t.fxState.reverbType = v; t.fx.reverb.buffer = this.irs[v]; },
-      reverbMix:      (v) => { t.fxState.reverbMix = v; t.fx.reverbSend.gain.setTargetAtTime(v / 100, this.ctx.currentTime, 0.01); },
-      outGainDb:      (v) => { t.fxState.outGainDb = v; t.fx.outGain.gain.setTargetAtTime(dbToGain(v), this.ctx.currentTime, 0.01); },
-    };
-    setters[param]?.(value);
+    FX_SETTERS[param]?.(t, value, this);
   }
 
   position() {
