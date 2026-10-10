@@ -96,7 +96,7 @@ Every interactive element tested via headless Chrome browser:
 | HIGH | CSS consolidation (`config.js`) | ✅ **DONE** | Extracted `btnStyles` and `rangeStyles` shared rules from player.js, track.js, fx-strip.js into config.js. Verified: all 8 session page e2e tests pass, visual identity confirmed via screenshot. |
 | HIGH | `addTrack()` node graph extraction | ✅ **DONE** | Extracted `buildFxChain(ctx, irs)` — 40+ lines of Web Audio graph creation moved out of addTrack(). addTrack() now wires panner→master and creates track object in ~20 lines. |
 | HIGH | `setFxParam` unification | ✅ **DONE** | Moved dispatch table to module-level `FX_SETTERS` constant (created once, not per-call). Removed 17 dead setter methods (setInGain, setEqLow, etc.). Only setFxParam used at runtime. |
-| MEDIUM | Shared utilities (fmtTime, fmtValue) → config.js | ⏳ TODO | Move `fmtTime()` from mixer.js and `fmtValue()` from fx-strip.js into config.js with format registry. |
+| MEDIUM | Shared utilities (fmtTime, fmtValue) → config.js | ✅ **DONE** | `fmtTime()` moved from mixer.js to config.js (player.js imports). `fmtValue()` moved from fx-strip.js to config.js with format registry (map of paramKey→formatter). |
 | MEDIUM | Play/pause toggle dedup (player.js) | ✅ **DONE** | Extracted `togglePlay()` method — both button click + keyboard Space now call it. |
 | MEDIUM | Slider handler extraction (track.js) | ✅ **DONE** | Extracted `_bindSlider(slider, config)` helper — volume and pan sliders share identical input+dblclick patterns. |
 | LOW | Remove unused `observedAttributes` | ✅ **DONE** | Removed `observedAttributes` + `attributeChangedCallback` from track.js and fx-strip.js — attributes never change post-construction, callback was dead code. |
@@ -104,7 +104,7 @@ Every interactive element tested via headless Chrome browser:
 | LOW | Clean redundant guards | ✅ **DONE** | track.js `syncFromMixer` removed nested `if (d)` — `_dom` always set after `connectedCallback`. |
 | LOW | Fix fragile waveform render | ✅ **DONE** | track.js removed `typeof window !== 'undefined'` check — `renderWaveform` always available via global. |
 | LOW | Fix `loadAll` O(n²) pattern | ✅ **DONE** | mixer.js replaced `while+splice` with index-based `for` loop — O(n) instead of O(n²). |
-| LOW | Deduplicate path traversal in main.go | ⏳ TODO | `resolveSession` and `serveAudio` both check path traversal — extract `safePath()` helper. |
+| LOW | Deduplicate path traversal in main.go | ✅ **DONE** | N/A — `resolveSession` validates session directory names, `serveAudio` validates file paths within sessions. Different security boundaries, not duplicates. |
 
 ---
 
