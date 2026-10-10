@@ -1,7 +1,7 @@
 // track.js — <daw-track> custom element
 // Encapsulates one track row: controls column + waveform lane + FX panel.
 
-import { PALETTE, baseStyle } from './config.js';
+import { PALETTE, baseStyle, btnStyles, rangeStyles } from './config.js';
 
 /**
  * <daw-track> — Per-track Web Component.
@@ -69,7 +69,7 @@ class DawTrack extends HTMLElement {
       '--border', '--border-2', '--text', '--muted',
       '--accent', '--solo', '--mute', '--wave-bg', '--playhead',
     ]);
-    return `${base}
+    return `${base}${btnStyles}${rangeStyles}
       /* Track wrapper */
       .track {
         display: flex;
@@ -112,17 +112,15 @@ class DawTrack extends HTMLElement {
         gap: 6px;
       }
 
-      /* Mute / Solo / FX buttons */
+      /* Mute / Solo / FX buttons — overrides base button */
       .btn-ms {
         width: 22px;
         height: 22px;
-        border: 1px solid var(--border);
         border-radius: 4px;
         background: var(--surface-2);
         color: var(--muted);
         font-size: 11px;
         font-weight: 600;
-        cursor: pointer;
         transition: background 120ms, color 120ms, border-color 120ms;
         display: flex;
         align-items: center;
@@ -152,38 +150,29 @@ class DawTrack extends HTMLElement {
         border-color: var(--accent);
       }
 
-      /* Volume slider */
+      /* Volume slider — overrides base range */
       input.vol {
         --fill-pct: 90.9%;
         flex: 1 1 0;
         min-width: 0;
-        -webkit-appearance: none;
-        appearance: none;
         height: 10px;
         background: linear-gradient(90deg,
           var(--playhead) 0%, var(--playhead) var(--fill-pct),
           var(--border) var(--fill-pct), var(--border) 100%);
         border-radius: 2px;
         outline: none;
-        cursor: pointer;
       }
       input.vol::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
         width: 4px;
         height: 20px;
         border-radius: 1px;
         background: var(--text);
-        border: none;
-        cursor: pointer;
       }
       input.vol::-moz-range-thumb {
         width: 4px;
         height: 20px;
         border-radius: 1px;
         background: var(--text);
-        border: none;
-        cursor: pointer;
       }
       .vol-readout {
         font-family: ui-monospace, monospace;
@@ -193,37 +182,28 @@ class DawTrack extends HTMLElement {
         text-align: right;
       }
 
-      /* Pan slider */
+      /* Pan slider — overrides base range */
       input.pan {
         flex: none;
         width: 60px;
-        -webkit-appearance: none;
-        appearance: none;
         height: 10px;
         background: linear-gradient(90deg,
           var(--solo) 0%, var(--solo) 50%,
           var(--accent) 50%, var(--accent) 100%);
         border-radius: 2px;
         outline: none;
-        cursor: pointer;
       }
       input.pan::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
         width: 4px;
         height: 20px;
         border-radius: 1px;
         background: var(--text);
-        border: none;
-        cursor: pointer;
       }
       input.pan::-moz-range-thumb {
         width: 4px;
         height: 20px;
         border-radius: 1px;
         background: var(--text);
-        border: none;
-        cursor: pointer;
       }
 
       /* Waveform lane */

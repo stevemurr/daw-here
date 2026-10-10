@@ -6,7 +6,7 @@
 //   fx-param-change  – { idx, section, param, value }
 //   fx-reverb-type   – { idx, type }
 
-import { PALETTE, baseStyle } from './config.js';
+import { PALETTE, baseStyle, btnStyles, rangeStyles } from './config.js';
 
 const REVERB_TYPES = ['room', 'hall', 'nonlin'];
 
@@ -286,7 +286,7 @@ class DawFxStrip extends HTMLElement {
       '--bg', '--surface', '--surface-2',
       '--border', '--text', '--muted', '--accent',
     ]);
-    return `${base}
+    return `${base}${btnStyles}${rangeStyles}
       .fx-strip { display: none; padding: 14px 18px 16px; background: var(--surface); border-top: 1px solid var(--border); gap: 0; flex-wrap: wrap; }
       :host(.open) .fx-strip { display: flex; }
       .fx-header { flex: 0 0 100%; margin: -4px 0 10px; font-family: ui-monospace, monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.02em; }
@@ -298,12 +298,11 @@ class DawFxStrip extends HTMLElement {
       .fx-section h3 { margin: 0 0 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
       .fx-knob { display: grid; grid-template-columns: 56px 1fr 60px; align-items: center; gap: 8px; font-family: ui-monospace, monospace; font-size: 11px; }
       .fx-knob > label { color: var(--muted); }
-      .fx-knob input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; background: var(--border); border-radius: 2px; outline: none; cursor: pointer; }
-      .fx-knob input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); cursor: pointer; }
-      .fx-knob input[type=range]::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; }
+      .fx-knob input[type=range] { width: 100%; height: 4px; border-radius: 2px; outline: none; }
+      .fx-knob input[type=range]::-webkit-slider-thumb { width: 10px; height: 10px; border-radius: 50%; }
+      .fx-knob input[type=range]::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; }
       .fx-knob .val { color: var(--text); text-align: right; }
-      .fx-pills { display: flex; gap: 6px; }
-      .fx-pill { padding: 4px 12px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); font-family: ui-monospace, monospace; font-size: 10px; text-transform: lowercase; cursor: pointer; transition: all 120ms; }
+      .fx-pill { padding: 4px 12px; border-radius: 4px; background: transparent; color: var(--muted); font-family: ui-monospace, monospace; font-size: 10px; text-transform: lowercase; transition: all 120ms; cursor: pointer; }
       .fx-pill:hover { color: var(--text); border-color: var(--muted); }
       .fx-pill.on { background: var(--accent); color: #0d1117; border-color: var(--accent); }
     `;

@@ -1,7 +1,7 @@
 // player.js — <daw-player> custom element
 // Root component: transport, seekbar, master volume, track container.
 
-import { PALETTE, baseStyle } from './config.js';
+import { PALETTE, baseStyle, btnStyles, rangeStyles } from './config.js';
 
 /**
  * <daw-player> — Root Web Component for the DAW session view.
@@ -85,16 +85,13 @@ class DawPlayer extends HTMLElement {
       '--border', '--border-2', '--text', '--muted',
       '--accent', '--solo', '--mute', '--playhead', '--wave', '--wave-bg',
     ]);
-    return `${base}
+    return `${base}${btnStyles}${rangeStyles}
       .layout { height: 100%; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; font-size: 13px; overflow: hidden; }
       header { flex: 0 0 auto; padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; }
       .title { color: var(--muted); text-decoration: none; font-size: 16px; font-weight: 600; white-space: nowrap; }
       .time-wrap { margin-left: auto; font-family: ui-monospace, monospace; font-size: 15px; color: var(--accent); letter-spacing: 0.05em; }
       .time.total { color: var(--muted); font-size: 14px; }
       .btns { display: flex; gap: 6px; align-items: center; }
-      button { cursor: pointer; user-select: none; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 13px; font-family: inherit; transition: all 0.1s ease; }
-      button:hover:not(:disabled) { background: var(--surface-2); border-color: var(--border-2); }
-      button:disabled { opacity: 0.3; cursor: default; }
       button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
       button.playing { background: rgba(88,166,255,0.15); border-color: var(--accent); color: var(--accent); }
       .seekbar { height: 36px; flex-shrink: 0; position: relative; background: var(--surface); cursor: pointer; }
@@ -108,9 +105,6 @@ class DawPlayer extends HTMLElement {
       .master-vol-wrap input[type="range"] { width: 80px; }
       .master-vol-wrap .val { font-size: 12px; font-family: ui-monospace, monospace; min-width: 50px; }
       .tracks-container { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; }
-      input[type="range"] { -webkit-appearance: none; appearance: none; height: 18px; background: transparent; cursor: pointer; }
-      input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--border); }
-      input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); margin-top: -4px; }
     `;
   }
 
