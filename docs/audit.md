@@ -97,8 +97,8 @@ Every interactive element tested via headless Chrome browser:
 | HIGH | `addTrack()` node graph extraction | ⏳ TODO | Extract 40+ lines of `ctx.createGain()`, `ctx.createBiquadFilter()`, `.connect()` calls into `buildFxChain(ctx)` helper. |
 | HIGH | `setFxParam` unification | ⏳ TODO | Replace inline dispatch table with config-driven approach — single source of truth for param→node mapping. |
 | MEDIUM | Shared utilities (fmtTime, fmtValue) → config.js | ⏳ TODO | Move `fmtTime()` from mixer.js and `fmtValue()` from fx-strip.js into config.js with format registry. |
-| MEDIUM | Play/pause toggle dedup (player.js) | ⏳ TODO | Extract `togglePlay()` method — duplicated in button click + keyboard handler. |
-| MEDIUM | Slider handler extraction (track.js) | ⏳ TODO | Extract `bindSlider()` helper — volume and pan sliders have identical input+dblclick patterns. |
+| MEDIUM | Play/pause toggle dedup (player.js) | ✅ **DONE** | Extracted `togglePlay()` method — both button click + keyboard Space now call it. |
+| MEDIUM | Slider handler extraction (track.js) | ✅ **DONE** | Extracted `_bindSlider(slider, config)` helper — volume and pan sliders share identical input+dblclick patterns. |
 | LOW | Remove unused `observedAttributes` | ⏳ TODO | track.js and fx-strip.js declare attributes observed but never changed post-construction. |
 | LOW | Fix hardcoded reverb selector | ⏳ TODO | fx-strip.js uses fragile `.fx-section:nth-child(5)` — should use `data-param` directly. |
 | LOW | Clean redundant guards | ⏳ TODO | track.js `syncFromMixer` has unnecessary `if (d)` and `if (!trackObj)` guards. |

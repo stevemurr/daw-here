@@ -9,8 +9,6 @@ import { PALETTE, baseStyle, btnStyles, rangeStyles } from './config.js';
  * events to the parent <daw-player> for mixer-level actions.
  */
 class DawTrack extends HTMLElement {
-  static get observedAttributes() { return ['data-idx', 'data-name', 'data-url']; }
-
   constructor() {
     super();
     this._shadow = this.attachShadow({ mode: 'open' });
@@ -23,17 +21,6 @@ class DawTrack extends HTMLElement {
     this.panVal = 0;
     this.fxFxOpen = false;
     this.errorText = null;
-  }
-
-  attributeChangedCallback(name, _oldValue, newValue) {
-    // React to attribute changes after initial construction
-    if (name === 'data-idx') this.idx = parseInt(newValue, 10) || 0;
-    if (name === 'data-name') this.trackName = newValue;
-    if (name === 'data-url') this.trackUrl = newValue;
-    // Re-sync from mixer if idx changed
-    if (name === 'data-idx' && this._mixer && this._mixer.tracks[this.idx]) {
-      this.syncFromMixer(this._mixer.tracks[this.idx]);
-    }
   }
 
   init(mixer) {

@@ -92,8 +92,6 @@ function buildSection(title, defs, ownerElement) {
 /* ---- Custom Element ---- */
 
 class DawFxStrip extends HTMLElement {
-  static get observedAttributes() { return ['data-idx', 'data-name']; }
-
   constructor() {
     super();
     this._shadow = this.attachShadow({ mode: 'open' });
@@ -102,15 +100,6 @@ class DawFxStrip extends HTMLElement {
     this._fxState = {};
     this._knobMap = new Map();  // paramKey → { slider, valSpan }
     this._reverbType = 'room';  // current reverb type for pill state
-  }
-
-  attributeChangedCallback(name, _oldValue, newValue) {
-    if (name === 'data-idx') this._idx = parseInt(newValue, 10) || -1;
-    if (name === 'data-name') this._trackName = newValue;
-    // Re-sync FX state if idx changed
-    if (name === 'data-idx' && this._mixer && this._mixer.tracks[this._idx]) {
-      this.syncFromMixer(this._mixer.tracks[this._idx]);
-    }
   }
 
   init(mixer, idx) {
