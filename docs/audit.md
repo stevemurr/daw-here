@@ -100,10 +100,10 @@ Every interactive element tested via headless Chrome browser:
 | MEDIUM | Play/pause toggle dedup (player.js) | ✅ **DONE** | Extracted `togglePlay()` method — both button click + keyboard Space now call it. |
 | MEDIUM | Slider handler extraction (track.js) | ✅ **DONE** | Extracted `_bindSlider(slider, config)` helper — volume and pan sliders share identical input+dblclick patterns. |
 | LOW | Remove unused `observedAttributes` | ✅ **DONE** | Removed `observedAttributes` + `attributeChangedCallback` from track.js and fx-strip.js — attributes never change post-construction, callback was dead code. |
-| LOW | Fix hardcoded reverb selector | ⏳ TODO | fx-strip.js uses fragile `.fx-section:nth-child(5)` — should use `data-param` directly. |
-| LOW | Clean redundant guards | ⏳ TODO | track.js `syncFromMixer` has unnecessary `if (d)` and `if (!trackObj)` guards. |
-| LOW | Fix fragile waveform render | ⏳ TODO | track.js uses `typeof window !== 'undefined' && window.renderWaveform` — should import directly. |
-| LOW | Fix `loadAll` O(n²) pattern | ⏳ TODO | mixer.js `while+splice` → index-based iteration. |
+| LOW | Fix hardcoded reverb selector | ✅ **DONE** | fx-strip.js `.fx-section:nth-child(5)` removed — reverbMix knob already captured by the data-param loop. |
+| LOW | Clean redundant guards | ✅ **DONE** | track.js `syncFromMixer` removed nested `if (d)` — `_dom` always set after `connectedCallback`. |
+| LOW | Fix fragile waveform render | ✅ **DONE** | track.js removed `typeof window !== 'undefined'` check — `renderWaveform` always available via global. |
+| LOW | Fix `loadAll` O(n²) pattern | ✅ **DONE** | mixer.js replaced `while+splice` with index-based `for` loop — O(n) instead of O(n²). |
 | LOW | Deduplicate path traversal in main.go | ⏳ TODO | `resolveSession` and `serveAudio` both check path traversal — extract `safePath()` helper. |
 
 ---
