@@ -418,47 +418,29 @@ class DawTrack extends HTMLElement {
       this._applyFx('Reverb', 'reverbType', e.detail.type);
     });
 
-    // Pan
-    d.panSlider.addEventListener('input', () => {
-      const p = parseInt(d.panSlider.value, 10);
-      const lbl = p === 0 ? 'C' : (p < 0 ? 'L' + (-p) : 'R' + p);
-      d.panSlider.title = 'Pan: ' + lbl;
-      this.dispatchEvent(new CustomEvent('track-pan-change', {
-        detail: { idx: this.idx, pan: p / 100 },
-        bubbles: true,
-        composed: true,
-      }));
-    });
-    d.panSlider.addEventListener('dblclick', () => {
-      d.panSlider.value = '0';
-      d.panSlider.title = 'Pan: C';
-      this.dispatchEvent(new CustomEvent('track-pan-change', {
-        detail: { idx: this.idx, pan: 0 },
-        bubbles: true,
-        composed: true,
-      }));
+    // Pan slider
+    this._bindSlider(d.panSlider, {
+      event: 'track-pan-change',
+      key: 'pan',
+      parse: v => parseInt(v, 10) / 100,
+      updateReadout: (slider, v) => {
+        const lbl = v === 0 ? 'C' : (v < 0 ? 'L' + (-v * 100) : 'R' + (v * 100));
+        slider.title = 'Pan: ' + lbl;
+      },
+      resetValue: '0',
     });
 
-    // Volume
-    d.volSlider.addEventListener('input', () => {
-      const db = parseFloat(d.volSlider.value);
-      d.volReadout.textContent = (db > 0 ? '+' : '') + db.toFixed(1);
-      this._updateVolFill();
-      this.dispatchEvent(new CustomEvent('track-volume-change', {
-        detail: { idx: this.idx, db: db },
-        bubbles: true,
-        composed: true,
-      }));
-    });
-    d.volSlider.addEventListener('dblclick', () => {
-      d.volSlider.value = '0';
-      d.volReadout.textContent = '0.0';
-      this._updateVolFill();
-      this.dispatchEvent(new CustomEvent('track-volume-change', {
-        detail: { idx: this.idx, db: 0 },
-        bubbles: true,
-        composed: true,
-      }));
+    // Volume slider
+    this._bindSlider(d.volSlider, {
+      event: 'track-volume-change',
+      key: 'db',
+      parse: v => parseFloat(v),
+      updateReadout: (slider, v) => {
+        d.volReadout.textContent = (v > 0 ? '+' : '') + v.toFixed(1);
+        this._updateVolFill();
+      },
+      resetValue: '0',
+      resetReadout: () => { d.volReadout.textContent = '0.0'; },
     });
 
     // Seekbar click on waveform
@@ -467,6 +449,39 @@ class DawTrack extends HTMLElement {
       const pct = (e.clientX - rect.left) / rect.width;
       this.dispatchEvent(new CustomEvent('track-seek', {
         detail: { pct },
+        bubbles: true,
+        composed: true,
+      }));
+    });
+  }
+
+  /**
+   * Bind input + dblclick handlers to a range slider.
+   * @param {HTMLInputElement} slider
+   * @param {object} cfg
+   * @param {string} cfg.event - Custom event name to dispatch
+   * @param {string} cfg.key - Detail key name (e.g. 'pan', 'db')
+   * @param {function} cfg.parse - Convert slider value to event detail value
+   * @param {function} cfg.updateReadout - (slider, value) => void
+   * @param {string} cfg.resetValue - Slider value on double-click
+   * @param {function?} cfg.resetReadout - Extra cleanup on double-click
+   */
+  _bindSlider(slider, cfg) {
+    slider.addEventListener('input', () => {
+      const raw = slider.value;
+      const val = cfg.parse(raw);
+      cfg.updateReadout(slider, val);
+      this.dispatchEvent(new CustomEvent(cfg.event, {
+        detail: { idx: this.idx, [cfg.key]: val },
+        bubbles: true,
+        composed: true,
+      }));
+    });
+    slider.addEventListener('dblclick', () => {
+      slider.value = cfg.resetValue;
+      if (cfg.resetReadout) cfg.resetReadout();
+      this.dispatchEvent(new CustomEvent(cfg.event, {
+        detail: { idx: this.idx, [cfg.key]: cfg.parse(cfg.resetValue) },
         bubbles: true,
         composed: true,
       }));
