@@ -114,7 +114,7 @@ class DawPlayer extends HTMLElement {
     // Play/Pause toggle
     d.btnPlay.addEventListener('click', () => {
       if (!this._mixer) return;
-      this._mixer.isPlaying ? this._mixer.pause() : this._mixer.play();
+      this.togglePlay();
     });
 
     // Stop
@@ -160,7 +160,7 @@ class DawPlayer extends HTMLElement {
       if (e.code === 'Space') {
         e.preventDefault();
         if (!d.btnPlay.disabled && this._mixer) {
-          this._mixer.isPlaying ? this._mixer.pause() : this._mixer.play();
+          this.togglePlay();
         }
       } else if (e.code === 'Home' || e.code === 'Digit0' || e.code === 'Numpad0') {
         if (!d.btnStop.disabled && this._mixer) {
@@ -289,6 +289,13 @@ class DawPlayer extends HTMLElement {
   }
 
   // ---- Transport & UI refresh ----
+
+  /**
+   * Toggle play/pause state.
+   */
+  togglePlay() {
+    this._mixer.isPlaying ? this._mixer.pause() : this._mixer.play();
+  }
 
   /**
    * Refresh transport button states, play/pause text, and total time display.
