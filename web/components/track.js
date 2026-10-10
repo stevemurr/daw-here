@@ -478,25 +478,23 @@ class DawTrack extends HTMLElement {
   syncFromMixer(trackObj) {
     if (!trackObj) return;
     const d = this._dom;
-    if (d) {
-      const mute = trackObj.mute;
-      const solo = trackObj.solo;
-      const db = trackObj.volume;
-      const pan = trackObj.pan;
+    const mute = trackObj.mute;
+    const solo = trackObj.solo;
+    const db = trackObj.volume;
+    const pan = trackObj.pan;
 
-      this.muted = mute;
-      this.solo = solo;
-      this.volumeDb = db;
-      this.panVal = pan;
+    this.muted = mute;
+    this.solo = solo;
+    this.volumeDb = db;
+    this.panVal = pan;
 
-      d.muteBtn.classList.toggle('on', mute);
-      d.soloBtn.classList.toggle('on', solo);
-      d.volSlider.value = db;
-      d.volReadout.textContent = (db > 0 ? '+' : '') + db.toFixed(1);
-      this._updateVolFill();
-      d.panSlider.value = pan * 100;
-      d.panSlider.title = 'Pan: ' + (pan === 0 ? 'C' : (pan < 0 ? 'L' + (-pan * 100) : 'R' + (pan * 100)));
-    }
+    d.muteBtn.classList.toggle('on', mute);
+    d.soloBtn.classList.toggle('on', solo);
+    d.volSlider.value = db;
+    d.volReadout.textContent = (db > 0 ? '+' : '') + db.toFixed(1);
+    this._updateVolFill();
+    d.panSlider.value = pan * 100;
+    d.panSlider.title = 'Pan: ' + (pan === 0 ? 'C' : (pan < 0 ? 'L' + (-pan * 100) : 'R' + (pan * 100)));
   }
 
   renderPlayhead(pct) {
@@ -507,8 +505,7 @@ class DawTrack extends HTMLElement {
   rerenderWaveforms() {
     if (!this._dom?.canvas) return;
     if (this._mixer && this._mixer.tracks[this.idx] && this._mixer.tracks[this.idx].buffer) {
-      const rf = (typeof window !== 'undefined' && window.renderWaveform);
-      if (rf) rf(this._dom.canvas, this._mixer.tracks[this.idx].buffer, this._mixer.duration);
+      window.renderWaveform(this._dom.canvas, this._mixer.tracks[this.idx].buffer, this._mixer.duration);
     }
   }
 

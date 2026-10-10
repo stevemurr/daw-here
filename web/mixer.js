@@ -223,11 +223,8 @@ class Mixer {
   }
 
   async loadAll(maxConcurrent = 8) {
-    const remaining = this.tracks.slice();
-
-    while (remaining.length > 0) {
-      // Take a batch of up to maxConcurrent tracks
-      const batch = remaining.splice(0, maxConcurrent);
+    for (let i = 0; i < this.tracks.length; i += maxConcurrent) {
+      const batch = this.tracks.slice(i, i + maxConcurrent);
       // Load concurrently; failures don't prevent other tracks in batch from completing
       await Promise.allSettled(batch.map(t => this.loadTrack(t)));
     }

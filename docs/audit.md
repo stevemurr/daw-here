@@ -99,7 +99,7 @@ Every interactive element tested via headless Chrome browser:
 | MEDIUM | Shared utilities (fmtTime, fmtValue) → config.js | ⏳ TODO | Move `fmtTime()` from mixer.js and `fmtValue()` from fx-strip.js into config.js with format registry. |
 | MEDIUM | Play/pause toggle dedup (player.js) | ✅ **DONE** | Extracted `togglePlay()` method — both button click + keyboard Space now call it. |
 | MEDIUM | Slider handler extraction (track.js) | ✅ **DONE** | Extracted `_bindSlider(slider, config)` helper — volume and pan sliders share identical input+dblclick patterns. |
-| LOW | Remove unused `observedAttributes` | ⏳ TODO | track.js and fx-strip.js declare attributes observed but never changed post-construction. |
+| LOW | Remove unused `observedAttributes` | ✅ **DONE** | Removed `observedAttributes` + `attributeChangedCallback` from track.js and fx-strip.js — attributes never change post-construction, callback was dead code. |
 | LOW | Fix hardcoded reverb selector | ⏳ TODO | fx-strip.js uses fragile `.fx-section:nth-child(5)` — should use `data-param` directly. |
 | LOW | Clean redundant guards | ⏳ TODO | track.js `syncFromMixer` has unnecessary `if (d)` and `if (!trackObj)` guards. |
 | LOW | Fix fragile waveform render | ⏳ TODO | track.js uses `typeof window !== 'undefined' && window.renderWaveform` — should import directly. |

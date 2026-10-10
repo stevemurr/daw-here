@@ -212,17 +212,7 @@ class DawFxStrip extends HTMLElement {
         this._knobMap.set(pk, { slider, valSpan });
       }
     }
-    // Also handle reverb mix separately since it's built differently
-    const reverbMix = this._dom.container.querySelector(
-      '.fx-section:nth-child(5) .fx-knob[data-param="reverbMix"]'
-    );
-    if (reverbMix) {
-      const slider = reverbMix.querySelector('input[type="range"]');
-      const valSpan = reverbMix.querySelector('.val');
-      if (slider && valSpan) {
-        this._knobMap.set('reverbMix', { slider, valSpan });
-      }
-    }
+    // Note: reverbMix knob is already captured above via its data-param="reverbMix"
   }
 
   /* Sync UI state from mixer track data */
