@@ -87,6 +87,27 @@ Every interactive element tested via headless Chrome browser:
 
 ---
 
+## Refactor Audit Progress
+
+### 2026-10-09 — Ongoing refactoring
+
+| Priority | Item | Status | Details |
+|----------|------|--------|---------|
+| HIGH | CSS consolidation (`config.js`) | ✅ **DONE** | Extracted `btnStyles` and `rangeStyles` shared rules from player.js, track.js, fx-strip.js into config.js. Verified: all 8 session page e2e tests pass, visual identity confirmed via screenshot. |
+| HIGH | `addTrack()` node graph extraction | ⏳ TODO | Extract 40+ lines of `ctx.createGain()`, `ctx.createBiquadFilter()`, `.connect()` calls into `buildFxChain(ctx)` helper. |
+| HIGH | `setFxParam` unification | ⏳ TODO | Replace inline dispatch table with config-driven approach — single source of truth for param→node mapping. |
+| MEDIUM | Shared utilities (fmtTime, fmtValue) → config.js | ⏳ TODO | Move `fmtTime()` from mixer.js and `fmtValue()` from fx-strip.js into config.js with format registry. |
+| MEDIUM | Play/pause toggle dedup (player.js) | ⏳ TODO | Extract `togglePlay()` method — duplicated in button click + keyboard handler. |
+| MEDIUM | Slider handler extraction (track.js) | ⏳ TODO | Extract `bindSlider()` helper — volume and pan sliders have identical input+dblclick patterns. |
+| LOW | Remove unused `observedAttributes` | ⏳ TODO | track.js and fx-strip.js declare attributes observed but never changed post-construction. |
+| LOW | Fix hardcoded reverb selector | ⏳ TODO | fx-strip.js uses fragile `.fx-section:nth-child(5)` — should use `data-param` directly. |
+| LOW | Clean redundant guards | ⏳ TODO | track.js `syncFromMixer` has unnecessary `if (d)` and `if (!trackObj)` guards. |
+| LOW | Fix fragile waveform render | ⏳ TODO | track.js uses `typeof window !== 'undefined' && window.renderWaveform` — should import directly. |
+| LOW | Fix `loadAll` O(n²) pattern | ⏳ TODO | mixer.js `while+splice` → index-based iteration. |
+| LOW | Deduplicate path traversal in main.go | ⏳ TODO | `resolveSession` and `serveAudio` both check path traversal — extract `safePath()` helper. |
+
+---
+
 ## No Remaining Issues
 
 All previously logged findings have been fixed. Build passes; unit tests pass.

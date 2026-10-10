@@ -6,7 +6,7 @@
 //   fx-param-change  – { idx, section, param, value }
 //   fx-reverb-type   – { idx, type }
 
-import { PALETTE, baseStyle, btnStyles, rangeStyles } from './config.js';
+import { PALETTE, baseStyle, btnStyles, rangeStyles, fmtValue } from './config.js';
 
 const REVERB_TYPES = ['room', 'hall', 'nonlin'];
 
@@ -28,22 +28,6 @@ const KNOB_DEFS = [
   ['Delay', 'Mix',          0,  100,     1,    0,    'delayMix'],
   ['Output','Gain',        -24,   24,    0.1,  0,     'outGainDb'],
 ];
-
-/* ---- Formatting helpers ---- */
-function fmtValue(paramKey, v) {
-  switch (paramKey) {
-    case 'eqMidFreq': return v >= 1000 ? (v / 1000).toFixed(1) + ' kHz' : v.toFixed(0) + ' Hz';
-    case 'compRatio': return v.toFixed(1) + ':1';
-    case 'compAttack':
-    case 'compRelease':
-    case 'delayTimeMs': return v.toFixed(0) + ' ms';
-    case 'delayFeedback':
-    case 'delayMix':
-    case 'reverbMix': return v.toFixed(0) + ' %';
-    case 'eqMidQ': return v.toFixed(2);
-    default: return (v >= 0 ? '+' : '') + v.toFixed(1) + ' dB';
-  }
-}
 
 /* ---- Build a single knob element ---- */
 function buildKnob(defArr, ownerElement) {

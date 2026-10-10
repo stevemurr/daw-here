@@ -49,3 +49,32 @@ export const rangeStyles = `
   input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); margin-top: -4px; }
   input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; }
 `;
+
+// ---- Time formatting utility ----
+// Formats seconds as "m:ss.mmm" (e.g. "1:23.456").
+export function fmtTime(sec) {
+  const mins = Math.floor(sec / 60);
+  const s = sec - mins * 60;
+  return mins + ':' + String(Math.floor(s)).padStart(2, '0') + '.' + String(Math.floor((s % 1) * 1000)).padStart(3, '0');
+}
+
+// ---- Value formatting registry ----
+// Maps param keys to format functions for FX knob readouts.
+const fmtRegistry = {
+  eqMidFreq:       v => v >= 1000 ? (v / 1000).toFixed(1) + ' kHz' : v.toFixed(0) + ' Hz',
+  compRatio:       v => v.toFixed(1) + ':1',
+  compAttack:      v => v.toFixed(0) + ' ms',
+  compRelease:     v => v.toFixed(0) + ' ms',
+  delayTimeMs:     v => v.toFixed(0) + ' ms',
+  delayFeedback:   v => v.toFixed(0) + ' %',
+  delayMix:        v => v.toFixed(0) + ' %',
+  reverbMix:       v => v.toFixed(0) + ' %',
+  eqMidQ:          v => v.toFixed(2),
+  // Default: dB values with sign prefix
+  default:         v => (v >= 0 ? '+' : '') + v.toFixed(1) + ' dB',
+};
+
+// Format an FX parameter value using the registry. Falls back to dB format.
+export function fmtValue(paramKey, v) {
+  return (fmtRegistry[paramKey] || fmtRegistry.default)(v);
+}

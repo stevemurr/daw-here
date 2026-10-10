@@ -1,7 +1,7 @@
 // player.js — <daw-player> custom element
 // Root component: transport, seekbar, master volume, track container.
 
-import { PALETTE, baseStyle, btnStyles, rangeStyles } from './config.js';
+import { PALETTE, baseStyle, btnStyles, rangeStyles, fmtTime } from './config.js';
 
 /**
  * <daw-player> — Root Web Component for the DAW session view.
